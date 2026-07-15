@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+.env
+job_data.json
+job_data.dev.json
+applications/
+.claude/

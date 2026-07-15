@@ -1,0 +1,1957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Job Checker</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3247;
+      --text: #e2e4ef;
+      --muted: #7a7f9a;
+      --accent: #6c8eff;
+      --accent-dim: #1e2d5c;
+      --green: #3ecf8e;
+      --green-dim: #0d2e20;
+      --red: #f86a6a;
+      --red-dim: #2e1010;
+      --yellow: #f4c54a;
+      --yellow-dim: #2e2410;
+      --radius: 8px;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    .app { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .logo { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo span { color: var(--accent); }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+
+    .stat { display: flex; align-items: center; gap: 5px; }
+    .stat-num { color: var(--text); font-weight: 600; }
+    .stat-new { color: var(--green); font-weight: 700; }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 7px 14px;
+      border-radius: var(--radius);
+      border: none;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 500;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--surface2); opacity: 1; }
+    .btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid #3e1515; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .btn-icon { padding: 5px 8px; background: transparent; color: var(--muted); border: none; font-size: 16px; line-height: 1; }
+    .btn-icon:hover { color: var(--red); opacity: 1; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+    .tab {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 14px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+    .tab-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 9px;
+      background: var(--green);
+      color: #000;
+      font-size: 11px;
+      font-weight: 700;
+      margin-left: 6px;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Cards & surfaces ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 10px;
+    }
+    .card:last-child { margin-bottom: 0; }
+
+    /* ── Job card ── */
+    .job-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: border-color 0.15s;
+    }
+    .job-card:hover { border-color: var(--accent); }
+    .job-card.is-new { border-left: 3px solid var(--green); }
+
+    .job-main { flex: 1; min-width: 0; }
+    .job-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text);
+      text-decoration: none;
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .job-title:hover { color: var(--accent); }
+    .job-meta { display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+    .job-company { color: var(--muted); font-size: 12px; text-decoration: none; }
+    .job-company:hover { color: var(--accent); }
+    .job-location { color: var(--muted); font-size: 12px; }
+    .job-location::before { content: '📍 '; font-size: 11px; }
+
+    .job-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+    .badge-new {
+      display: inline-block;
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid var(--green);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .badge-remote {
+      display: inline-block;
+      background: #1a2a2e;
+      color: #3ecfcf;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+    .badge-match-title {
+      display: inline-block;
+      background: #1a2e1a;
+      color: var(--green);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+    .badge-match-desc {
+      display: inline-block;
+      background: var(--surface2);
+      color: var(--muted);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+    .badge-source {
+      display: inline-block;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-applied {
+      display: inline-block;
+      background: #1a2a3a;
+      color: #6cb8ff;
+      border: 1px solid #2a4a6a;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .btn-apply {
+      padding: 4px 10px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background .15s;
+    }
+    .btn-apply:hover { background: var(--accent); color: #fff; }
+
+    /* ── Apply modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.65);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 860px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-header h2 { font-size: 16px; font-weight: 700; }
+    .modal-body { padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+    .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: center; }
+    .modal-job-info { background: var(--surface2); border-radius: 8px; padding: 12px 14px; }
+    .modal-job-title { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+    .modal-job-meta { font-size: 12px; color: var(--muted); }
+    .modal-label { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+    .modal textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      line-height: 1.55;
+      padding: 12px;
+      resize: vertical;
+      min-height: 200px;
+    }
+    .modal textarea:focus { outline: none; border-color: var(--accent); }
+    .modal input[type="text"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      padding: 8px 10px;
+    }
+    .modal input[type="text"]:focus { outline: none; border-color: var(--accent); }
+    .copy-hint {
+      font-size: 12px;
+      color: var(--muted);
+      flex: 1;
+    }
+    .copy-hint.success { color: var(--green); }
+
+    /* ── Job filters toolbar ── */
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .toolbar-spacer { flex: 1; }
+
+    .filter-label {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    select.filter-select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 10px;
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--muted);
+      user-select: none;
+    }
+    .toggle-label input[type=checkbox] { accent-color: var(--green); width: 14px; height: 14px; }
+
+    /* ── Company list ── */
+    .company-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+    }
+    .company-info { flex: 1; min-width: 0; }
+    .company-name { font-weight: 600; }
+    .company-url { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .company-edit-row {
+      display: none;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .company-item.editing .company-edit-row { display: flex; }
+    .company-item.editing .company-url { display: none; }
+    .company-job-count { font-size: 12px; color: var(--muted); background: var(--surface2); padding: 2px 8px; border-radius: 99px; flex-shrink: 0; }
+
+    /* ── Forms ── */
+    .form-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+    label { font-size: 12px; color: var(--muted); font-weight: 500; }
+
+    input[type=text], input[type=url] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 13px;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.15s;
+    }
+    input[type=text]:focus, input[type=url]:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--muted); }
+
+    /* ── Keywords ── */
+    .keywords-area {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 52px;
+      cursor: text;
+    }
+    .keywords-area:focus-within { border-color: var(--accent); }
+
+    .keyword-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid #2a3d7a;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .keyword-tag button {
+      background: none;
+      border: none;
+      color: var(--accent);
+      cursor: pointer;
+      padding: 0;
+      font-size: 14px;
+      line-height: 1;
+      opacity: 0.7;
+    }
+    .keyword-tag button:hover { opacity: 1; }
+
+    .keyword-input {
+      border: none !important;
+      outline: none !important;
+      background: transparent !important;
+      color: var(--text) !important;
+      font-size: 13px !important;
+      padding: 2px 4px !important;
+      min-width: 120px;
+      flex: 1;
+    }
+
+    /* ── Empty states ── */
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+    .empty-icon { font-size: 32px; margin-bottom: 12px; }
+    .empty-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .empty-desc { font-size: 13px; line-height: 1.6; }
+
+    /* ── Loading / error ── */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .alert {
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    .alert-error { background: var(--red-dim); color: var(--red); border: 1px solid #3e1515; }
+    .alert-success { background: var(--green-dim); color: var(--green); border: 1px solid #0d3e20; }
+    .alert-info { background: var(--accent-dim); color: var(--accent); border: 1px solid #1e2d5c; }
+
+    /* ── Misc ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title { font-size: 15px; font-weight: 600; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+
+    .detect-banner {
+      background: var(--accent-dim);
+      border: 1px solid #2a3d7a;
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .detect-banner.warn {
+      background: var(--yellow-dim);
+      border-color: #4a3a10;
+      color: var(--yellow);
+    }
+    .detect-banner-text { flex: 1; min-width: 0; color: var(--text); }
+    .detect-banner-text code { color: var(--accent); font-size: 12px; word-break: break-all; }
+
+    .checking-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--accent-dim);
+      border: 1px solid #2a3d7a;
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">Job<span>Checker</span></div>
+    <div class="status-bar" id="status-bar">
+      <span class="stat">Loading...</span>
+    </div>
+    <button class="btn btn-ghost" onclick="openApplyModal(null)" style="margin-right:4px">
+      + Apply
+    </button>
+    <button class="btn btn-primary" id="check-btn" onclick="triggerCheck()">
+      Check Now
+    </button>
+  </header>
+
+  <div id="check-banner" class="checking-banner" style="display:none">
+    <span class="spinner"></span>
+    Checking job boards — this may take a minute...
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="jobs" onclick="switchTab('jobs')">
+      Jobs <span id="new-badge" class="tab-badge" style="display:none">0</span>
+    </button>
+    <button class="tab" data-tab="companies" onclick="switchTab('companies')">
+      Companies
+    </button>
+    <button class="tab" data-tab="keywords" onclick="switchTab('keywords')">
+      Keywords
+    </button>
+    <button class="tab" data-tab="settings" onclick="switchTab('settings')">
+      Settings
+    </button>
+    <button class="tab" data-tab="search" onclick="switchTab('search')">
+      Search
+    </button>
+  </div>
+
+  <!-- ── Jobs Tab ── -->
+  <div id="tab-jobs" class="tab-content active">
+    <div class="toolbar">
+      <select class="filter-select" id="company-filter" onchange="renderJobs()">
+        <option value="">All companies</option>
+      </select>
+      <label class="toggle-label">
+        <input type="checkbox" id="new-only-toggle" onchange="renderJobs()" />
+        New only
+      </label>
+      <label class="toggle-label">
+        <input type="checkbox" id="matching-only-toggle" onchange="renderJobs()" />
+        Keyword matches only
+      </label>
+      <label class="toggle-label">
+        <input type="checkbox" id="remote-only-toggle" onchange="renderJobs()" />
+        Remote only
+      </label>
+      <div class="toolbar-spacer"></div>
+      <button class="btn btn-ghost btn-sm" id="dismiss-all-btn" onclick="dismissAll()" style="display:none">
+        Mark all seen
+      </button>
+    </div>
+    <div id="jobs-list"></div>
+  </div>
+
+  <!-- ── Companies Tab ── -->
+  <div id="tab-companies" class="tab-content">
+    <div class="card" style="margin-bottom:20px">
+      <div class="section-title" style="margin-bottom:12px">Add Company</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Company name</label>
+          <input type="text" id="co-name" placeholder="e.g. Stripe" />
+        </div>
+        <div class="form-group" style="flex:2">
+          <label>Jobs page URL</label>
+          <input type="url" id="co-url" placeholder="e.g. https://stripe.com/jobs or https://boards.greenhouse.io/stripe" />
+        </div>
+        <button class="btn btn-primary" onclick="addCompany()" style="margin-bottom:0">Add</button>
+      </div>
+      <p class="hint">Supports Greenhouse, Lever, Ashby, and generic job pages. Paste the URL of the careers or job listings page.</p>
+      <div id="add-detect-banner" style="margin-top:10px"></div>
+    </div>
+    <div id="company-list"></div>
+  </div>
+
+  <!-- ── Settings Tab ── -->
+  <div id="tab-settings" class="tab-content">
+    <div style="max-width:600px;display:flex;flex-direction:column;gap:28px;padding-top:4px">
+
+      <!-- Model -->
+      <div>
+        <label style="display:block;font-size:12px;color:var(--accent);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:8px">Model</label>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:10px;line-height:1.5">
+          Use <strong style="color:var(--text)">Haiku</strong> (~$0.005/run) while testing, switch to <strong style="color:var(--text)">Sonnet</strong> (~$0.05/run) for real applications.
+        </p>
+        <div style="display:flex;gap:10px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1px solid var(--border);flex:1" id="model-haiku-label">
+            <input type="radio" name="model" value="haiku" onchange="saveModelSetting()" style="accent-color:var(--accent)">
+            <div>
+              <div style="font-weight:600;font-size:13px">Haiku</div>
+              <div style="font-size:11px;color:var(--muted)">Fast · cheap · good for testing</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 14px;border-radius:8px;border:1px solid var(--border);flex:1" id="model-sonnet-label">
+            <input type="radio" name="model" value="sonnet" onchange="saveModelSetting()" style="accent-color:var(--accent)">
+            <div>
+              <div style="font-weight:600;font-size:13px">Sonnet</div>
+              <div style="font-size:11px;color:var(--muted)">Best quality · real applications</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Google Docs -->
+      <div>
+        <label style="display:block;font-size:12px;color:var(--accent);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:8px">Career Docs (Google Docs)</label>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;line-height:1.5">
+          Paste the URL of each Google Doc. Each doc must be shared as <strong style="color:var(--text)">"Anyone with the link can view"</strong>.
+          These override the local <code style="background:var(--surface2);padding:1px 5px;border-radius:3px">career_docs/</code> files when set.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Instructions (how to write — your most important tuning lever)</div>
+            <input type="url" class="gdoc-input" data-doc="instructions" placeholder="https://docs.google.com/document/d/..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:8px 10px;font-family:var(--font)" />
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Resume</div>
+            <input type="url" class="gdoc-input" data-doc="resume" placeholder="https://docs.google.com/document/d/..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:8px 10px;font-family:var(--font)" />
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Bio / personal summary</div>
+            <input type="url" class="gdoc-input" data-doc="bio" placeholder="https://docs.google.com/document/d/..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:8px 10px;font-family:var(--font)" />
+          </div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:14px" onclick="saveGdocSettings()">Save Doc URLs</button>
+        <span id="settings-feedback" style="margin-left:10px;font-size:12px;color:var(--green)"></span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Search Tab ── -->
+  <div id="tab-search" class="tab-content">
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div class="section-title">Adzuna Sweep</div>
+          <div id="sweep-status" style="font-size:12px;color:var(--muted);margin-top:4px">Loading…</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost btn-sm" id="sweep-excluded-toggle" onclick="toggleExcludedPanel()" style="display:none"></button>
+          <button class="btn btn-primary" id="sweep-btn" onclick="triggerSweep()">Sweep Now</button>
+        </div>
+      </div>
+      <div id="sweep-excluded-panel" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px"></div>
+    </div>
+    <div class="toolbar" style="gap:8px">
+      <input type="text" id="search-query" value="product manager"
+        style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:8px 10px;font-family:var(--font)"
+        placeholder="e.g. product manager, technical PM..."
+        onkeydown="if(event.key==='Enter')runSearch()" />
+      <select id="search-days" class="filter-select" title="Posted within">
+        <option value="1">Last 24h</option>
+        <option value="3">Last 3 days</option>
+        <option value="7" selected>Last 7 days</option>
+        <option value="14">Last 14 days</option>
+        <option value="30">Last 30 days</option>
+      </select>
+      <button class="btn btn-primary" onclick="runSearch()">Search</button>
+    </div>
+    <div id="search-status" style="font-size:12px;color:var(--muted);padding:4px 0 8px"></div>
+    <div id="search-results"></div>
+    <div id="search-pagination" style="display:flex;gap:8px;margin-top:16px;align-items:center"></div>
+  </div>
+
+
+  <!-- ── Keywords Tab ── -->
+  <div id="tab-keywords" class="tab-content">
+    <div style="max-width:600px">
+      <p style="color:var(--muted); margin-bottom:20px; font-size:13px; line-height:1.6">
+        Jobs matching a <strong style="color:var(--text)">title keyword</strong> rank higher and are shown first.
+        Jobs matching only a <strong style="color:var(--text)">description keyword</strong> still appear but are sorted below.
+        Leave both empty to see all postings.
+      </p>
+
+      <label style="display:block; margin-bottom:6px; font-size:12px; color:var(--accent); font-weight:600; letter-spacing:.3px; text-transform:uppercase">Title Keywords</label>
+      <p class="hint" style="margin-bottom:8px">Matched against the job title only. Highest priority.</p>
+      <div class="keywords-area" id="title-kw-area" onclick="document.getElementById('title-kw-input').focus()">
+        <input type="text" id="title-kw-input" class="keyword-input" placeholder="e.g. product manager, engineer…" onkeydown="handleKeywordInput(event, 'title')" />
+      </div>
+
+      <label style="display:block; margin-top:20px; margin-bottom:6px; font-size:12px; color:var(--muted); font-weight:600; letter-spacing:.3px; text-transform:uppercase">Description Keywords</label>
+      <p class="hint" style="margin-bottom:8px">Matched against title + any available description text. Lower priority.</p>
+      <div class="keywords-area" id="desc-kw-area" onclick="document.getElementById('desc-kw-input').focus()">
+        <input type="text" id="desc-kw-input" class="keyword-input" placeholder="e.g. remote, python, B2B…" onkeydown="handleKeywordInput(event, 'desc')" />
+      </div>
+
+      <div style="margin-top:16px">
+        <button class="btn btn-primary" onclick="saveKeywords()">Save Keywords</button>
+      </div>
+      <p class="hint" style="margin-top:10px">Press Enter or comma to add a keyword. Backspace to remove the last one.</p>
+      <div id="kw-feedback" style="margin-top:12px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
+
+let state = {
+  jobs: [],
+  companies: [],
+  title_keywords: [],
+  desc_keywords: [],
+  status: {},
+  schedule: null,
+  settings: {},
+  pollingTimer: null,
+};
+
+// ─────────────────────────────────────────────
+// API helpers
+// ─────────────────────────────────────────────
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  return res.json();
+}
+
+// ─────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────
+
+async function init() {
+  await Promise.all([loadStatus(), loadJobs(), loadCompanies(), loadKeywords(), loadSettings()]);
+  startPolling();
+}
+
+async function loadStatus() {
+  try {
+    [state.status, state.schedule] = await Promise.all([
+      api('/api/status'),
+      api('/api/schedule').catch(() => null),
+    ]);
+    renderStatus();
+    renderSweepStatus();
+    toggleCheckBanner(state.status.check_running);
+    if (state.status.check_running) {
+      pollUntilDone();
+    }
+    if (state.status.sweep_running) {
+      pollSweepUntilDone();
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function loadJobs() {
+  state.jobs = await api('/api/jobs');
+  renderJobs();
+}
+
+async function loadCompanies() {
+  state.companies = await api('/api/companies');
+  renderCompanies();
+  updateCompanyFilter();
+}
+
+async function loadKeywords() {
+  const kw = await api('/api/keywords');
+  state.title_keywords = kw.title_keywords || [];
+  state.desc_keywords = kw.desc_keywords || [];
+  renderKeywords();
+}
+
+// ─────────────────────────────────────────────
+// Polling
+// ─────────────────────────────────────────────
+
+function startPolling() {
+  // Poll status every 30s to catch scheduled check updates
+  setInterval(async () => {
+    await loadStatus();
+  }, 30000);
+}
+
+function pollUntilDone() {
+  const timer = setInterval(async () => {
+    await loadStatus();
+    if (!state.status.check_running) {
+      clearInterval(timer);
+      await Promise.all([loadJobs(), loadCompanies()]);
+    }
+  }, 2000);
+}
+
+// ─────────────────────────────────────────────
+// Status bar
+// ─────────────────────────────────────────────
+
+function renderStatus() {
+  const { last_checked, job_count, new_jobs, company_count } = state.status;
+  const checkedStr = last_checked
+    ? `Checked ${timeAgo(last_checked)}`
+    : 'Never checked';
+  let scheduleStr = '';
+  if (state.schedule?.enabled && state.schedule?.next_run) {
+    const next = new Date(state.schedule.next_run);
+    const h = next.getHours(), ampm = h >= 12 ? 'pm' : 'am';
+    scheduleStr = `<span class="stat" style="opacity:.6" title="Auto-check runs daily at ${h % 12 || 12}${ampm}">⏰ ${timeAgo(state.schedule.next_run)}</span>`;
+  }
+  document.getElementById('status-bar').innerHTML = `
+    <span class="stat">${company_count} <span style="opacity:.6">companies</span></span>
+    <span class="stat">${job_count} <span style="opacity:.6">jobs</span></span>
+    ${new_jobs > 0 ? `<span class="stat"><span class="stat-new">↑${new_jobs} new</span></span>` : ''}
+    <span class="stat" style="opacity:.6">${checkedStr}</span>
+    ${scheduleStr}
+  `;
+  const badge = document.getElementById('new-badge');
+  if (new_jobs > 0) {
+    badge.textContent = new_jobs;
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function toggleCheckBanner(visible) {
+  document.getElementById('check-banner').style.display = visible ? 'flex' : 'none';
+  document.getElementById('check-btn').disabled = visible;
+  document.getElementById('check-btn').textContent = visible ? 'Checking…' : 'Check Now';
+}
+
+// ─────────────────────────────────────────────
+// Adzuna sweep
+// ─────────────────────────────────────────────
+
+const EXCLUDE_REASON_LABELS = { duplicate: 'duplicate', title_mismatch: 'title mismatch' };
+let _excludedPanelOpen = false;
+
+function renderSweepStatus() {
+  const { last_adzuna_sweep, last_adzuna_sweep_result, sweep_running } = state.status;
+  const btn = document.getElementById('sweep-btn');
+  const statusEl = document.getElementById('sweep-status');
+  const toggleBtn = document.getElementById('sweep-excluded-toggle');
+  if (!btn || !statusEl) return;
+
+  btn.disabled = sweep_running;
+  btn.textContent = sweep_running ? 'Sweeping…' : 'Sweep Now';
+
+  if (sweep_running) {
+    statusEl.textContent = 'Sweep in progress — searching Adzuna and adding new matches…';
+    toggleBtn.style.display = 'none';
+    return;
+  }
+
+  const excluded = (last_adzuna_sweep_result && last_adzuna_sweep_result.excluded) || [];
+  const parts = [last_adzuna_sweep ? `Last swept ${timeAgo(last_adzuna_sweep)}` : 'Never swept'];
+  if (last_adzuna_sweep_result) {
+    const r = last_adzuna_sweep_result;
+    if (r.errors && r.errors.length) {
+      parts.push(`⚠ ${r.errors[0].error || 'error'} — will retry from the same starting point next time`);
+    } else {
+      const byReason = r.excluded_by_reason || {};
+      const reasonStr = Object.entries(byReason)
+        .map(([reason, n]) => `${n} ${EXCLUDE_REASON_LABELS[reason] || reason}`)
+        .join(', ');
+      const excludedStr = excluded.length ? `, ${excluded.length} excluded${reasonStr ? ' — ' + reasonStr : ''}` : '';
+      parts.push(`${r.added} new job${r.added === 1 ? '' : 's'} added (${r.candidates_seen} candidate${r.candidates_seen === 1 ? '' : 's'} seen${excludedStr})`);
+    }
+  }
+  statusEl.textContent = parts.join(' — ');
+
+  if (excluded.length) {
+    toggleBtn.style.display = 'inline-block';
+    toggleBtn.textContent = _excludedPanelOpen ? 'Hide excluded' : `View excluded (${excluded.length})`;
+  } else {
+    toggleBtn.style.display = 'none';
+    _excludedPanelOpen = false;
+  }
+
+  const panel = document.getElementById('sweep-excluded-panel');
+  if (_excludedPanelOpen && excluded.length) {
+    renderExcludedPanel(excluded);
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+function toggleExcludedPanel() {
+  _excludedPanelOpen = !_excludedPanelOpen;
+  renderSweepStatus();
+}
+
+function renderExcludedPanel(excluded) {
+  const panel = document.getElementById('sweep-excluded-panel');
+  panel.style.display = 'block';
+  panel.innerHTML = excluded.map(r => `
+    <div class="job-card" style="display:block;margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div style="min-width:0">
+          <a href="${escHtml(r.url)}" target="_blank" class="job-title">${escHtml(r.title)}</a>
+          <div class="job-meta" style="margin-top:3px">
+            <span style="font-weight:500;color:var(--text)">${escHtml(r.company)}</span>
+            ${r.location ? `<span>· ${escHtml(r.location)}</span>` : ''}
+            ${r.posted ? `<span>· ${r.posted}</span>` : ''}
+            <span>· <span style="color:var(--yellow)">${escHtml(EXCLUDE_REASON_LABELS[r.reason] || r.reason)}</span></span>
+          </div>
+        </div>
+        <div style="flex-shrink:0">
+          ${r.reason === 'title_mismatch'
+            ? `<button class="btn btn-primary btn-sm" onclick="addSearchJob(this, ${escHtml(JSON.stringify(r))})">+ Add anyway</button>`
+            : '<span style="font-size:11px;color:var(--muted)">Already tracked</span>'}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+let _sweepPollTimer = null;
+function pollSweepUntilDone() {
+  if (_sweepPollTimer) return;
+  _sweepPollTimer = setInterval(async () => {
+    await loadStatus();
+    if (!state.status.sweep_running) {
+      clearInterval(_sweepPollTimer);
+      _sweepPollTimer = null;
+      await loadJobs();
+    }
+  }, 2000);
+}
+
+async function triggerSweep() {
+  if (!state.title_keywords || state.title_keywords.length === 0) {
+    alert('Add at least one title keyword first — the sweep searches Adzuna using those (Keywords tab).');
+    switchTab('keywords');
+    return;
+  }
+  try {
+    await api('/api/sweep-adzuna', { method: 'POST' });
+    state.status.sweep_running = true;
+    renderSweepStatus();
+    pollSweepUntilDone();
+  } catch (e) {
+    alert(e.message || 'Failed to start sweep');
+  }
+}
+
+// ─────────────────────────────────────────────
+// Jobs
+// ─────────────────────────────────────────────
+
+function renderJobs() {
+  const companyFilter = document.getElementById('company-filter').value;
+  const newOnly      = document.getElementById('new-only-toggle').checked;
+  const remoteOnly   = document.getElementById('remote-only-toggle').checked;
+  const matchingOnly = document.getElementById('matching-only-toggle').checked;
+  const dismissBtn   = document.getElementById('dismiss-all-btn');
+
+  let jobs = state.jobs;
+  if (companyFilter)  jobs = jobs.filter(j => j.company_id === companyFilter);
+  if (newOnly)        jobs = jobs.filter(j => j.is_new);
+  if (remoteOnly)     jobs = jobs.filter(j => j.is_remote || j.source === 'adzuna');
+  if (matchingOnly)   jobs = jobs.filter(j => (j.match_score ?? 0) > 0);
+
+  const newCount = state.jobs.filter(j => j.is_new).length;
+  dismissBtn.style.display = newCount > 0 ? 'inline-flex' : 'none';
+
+  const container = document.getElementById('jobs-list');
+
+  if (jobs.length === 0) {
+    container.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">${newOnly ? 'No new jobs' : 'No jobs yet'}</div>
+        <div class="empty-desc">${
+          newOnly
+            ? 'All caught up! Toggle off "New only" to see all tracked jobs.'
+            : state.companies.length === 0
+              ? 'Add companies on the Companies tab, then hit "Check Now".'
+              : 'Hit "Check Now" to scan your company job boards.'
+        }</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = jobs.map(job => `
+    <div class="job-card ${job.is_new ? 'is-new' : ''}" id="job-${job.id}">
+      <div class="job-main">
+        <a class="job-title" href="${escHtml(job.url)}" target="_blank" rel="noopener">
+          ${escHtml(job.title)}
+        </a>
+        <div class="job-meta">
+          <a class="job-company" href="${escHtml(companyUrl(job.company_id) || job.url || '#')}" target="_blank" rel="noopener">${escHtml(job.company_name)}</a>
+          ${job.location ? `<span class="job-location">${escHtml(job.location)}</span>` : ''}
+          <span style="color:var(--muted);font-size:11px;opacity:.6">${shortDate(job.first_seen)}</span>
+        </div>
+      </div>
+      <div class="job-actions">
+        ${job.is_new ? '<span class="badge-new">new</span>' : ''}
+        ${job.is_applied ? '<span class="badge-applied">applied</span>' : ''}
+        ${job.is_remote ? '<span class="badge-remote">🌐 remote</span>' : ''}
+        ${job.match_score === 2 ? '<span class="badge-match-title" title="Matches a title keyword">title match</span>' : job.match_score === 1 ? '<span class="badge-match-desc" title="Matches a description keyword">desc match</span>' : ''}
+        <span class="badge-source">${escHtml(job.source || '')}</span>
+        <button class="btn-apply" onclick="openApplyModal('${job.id}')">Apply</button>
+        ${job.is_new ? `<button class="btn-icon" title="Mark as seen" onclick="dismissJob('${job.id}')">✓</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function dismissJob(jobId) {
+  await api(`/api/jobs/${jobId}/dismiss`, { method: 'POST' });
+  const el = document.getElementById(`job-${jobId}`);
+  if (el) {
+    el.classList.remove('is-new');
+    el.querySelector('.badge-new')?.remove();
+    el.querySelector('.btn-icon')?.remove();
+  }
+  state.jobs = state.jobs.map(j => j.id === jobId ? { ...j, is_new: false } : j);
+  await loadStatus();
+}
+
+async function dismissAll() {
+  await api('/api/jobs/dismiss-all', { method: 'POST' });
+  state.jobs = state.jobs.map(j => ({ ...j, is_new: false }));
+  renderJobs();
+  await loadStatus();
+}
+
+function updateCompanyFilter() {
+  const sel = document.getElementById('company-filter');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All companies</option>' +
+    state.companies.map(c => `<option value="${c.id}" ${c.id === current ? 'selected' : ''}>${escHtml(c.name)}</option>`).join('');
+}
+
+// ─────────────────────────────────────────────
+// Companies
+// ─────────────────────────────────────────────
+
+function detectAtsFromUrl(company) {
+  // Check scrape_url first (explicit ATS endpoint), then fall back to display url
+  const url = (company.scrape_url || company.url || '').toLowerCase();
+  if (url.includes('boards.greenhouse.io') || url.includes('job-boards.greenhouse.io')) return 'Greenhouse';
+  if (url.includes('jobs.lever.co')) return 'Lever';
+  if (url.includes('jobs.ashbyhq.com')) return 'Ashby';
+  if (url.includes('myworkdayjobs.com')) return 'Workday';
+  if (url.includes('apply.workable.com')) return 'Workable';
+  if (url.includes('ats.rippling.com')) return 'Rippling';
+  if (url.includes('pinpointhq.com')) return 'Pinpoint';
+  if (url.includes('jobs.jobvite.com')) return 'Jobvite';
+  if (url.includes('smartrecruiters.com')) return 'SmartRecruiters';
+  if (url.includes('bamboohr.com')) return 'BambooHR';
+  if (url.includes('wellfound.com')) return 'Wellfound';
+  return null;
+}
+
+function renderCompanies() {
+  const container = document.getElementById('company-list');
+  if (state.companies.length === 0) {
+    container.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🏢</div>
+        <div class="empty-title">No companies yet</div>
+        <div class="empty-desc">Add a company above to get started.</div>
+      </div>`;
+    return;
+  }
+
+  const jobCountByCompany = {};
+  state.jobs.forEach(j => {
+    jobCountByCompany[j.company_id] = (jobCountByCompany[j.company_id] || 0) + 1;
+  });
+
+  container.innerHTML = state.companies.map(c => {
+    const ats = detectAtsFromUrl(c);
+    const atsBadge = ats ? `<span class="badge badge-source" style="font-size:10px;padding:1px 6px;margin-left:6px;vertical-align:middle">${escHtml(ats)}</span>` : '';
+    return `
+    <div class="company-item" id="co-item-${c.id}">
+      <div class="company-info" style="flex:1;min-width:0">
+        <div class="company-name">${escHtml(c.name)}${atsBadge}</div>
+        <div class="company-url">${escHtml(c.url)}</div>
+        <div class="company-edit-row">
+          <div class="form-group" style="min-width:120px;flex:0 0 160px">
+            <label>Name</label>
+            <input type="text" id="edit-name-${c.id}" value="${escHtml(c.name)}" />
+          </div>
+          <div class="form-group" style="flex:2;min-width:200px">
+            <label>Jobs page URL</label>
+            <input type="url" id="edit-url-${c.id}" value="${escHtml(c.url)}" />
+          </div>
+          <div style="display:flex;gap:6px;align-items:flex-end;padding-bottom:1px">
+            <button class="btn btn-primary btn-sm" onclick="saveCompanyEdit('${c.id}')">Save</button>
+            <button class="btn btn-ghost btn-sm" onclick="cancelCompanyEdit('${c.id}')">Cancel</button>
+          </div>
+          <div id="detect-banner-${c.id}" style="flex:1 0 100%;margin-top:8px"></div>
+        </div>
+      </div>
+      <span class="company-job-count">${jobCountByCompany[c.id] || 0} jobs</span>
+      <button class="btn btn-icon" title="Edit" onclick="startCompanyEdit('${c.id}')">✎</button>
+      <button class="btn btn-icon" title="Remove" onclick="removeCompany('${c.id}', '${escAttr(c.name)}')">✕</button>
+    </div>
+  `;
+  }).join('');
+}
+
+/**
+ * Run ATS detection on a URL.
+ * Shows a banner in `bannerId` element.
+ * Returns the final URL to use (possibly the suggested one), or null if user cancelled.
+ */
+async function runAtsDetection(url, bannerId) {
+  const banner = document.getElementById(bannerId);
+  if (!banner) return url;
+
+  banner.innerHTML = `<div class="detect-banner"><span class="spinner"></span> Checking URL for ATS…</div>`;
+
+  try {
+    const result = await api('/api/detect-ats', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    });
+
+    // Found a supported ATS with a better URL
+    if (result.suggested_url && result.suggested_url !== url) {
+      const atsLabel = result.ats.charAt(0).toUpperCase() + result.ats.slice(1);
+      return await new Promise(resolve => {
+        banner.innerHTML = `
+          <div class="detect-banner">
+            <div class="detect-banner-text">
+              🎯 Detected <strong>${escHtml(atsLabel)}</strong> — use their API URL for reliable results:<br>
+              <code>${escHtml(result.suggested_url)}</code>
+              ${result.warning ? `<br><span style="color:var(--yellow);font-size:11px">⚠ ${escHtml(result.warning)}</span>` : ''}
+            </div>
+            <button class="btn btn-primary btn-sm" id="${bannerId}-accept">Use it</button>
+            <button class="btn btn-ghost btn-sm" id="${bannerId}-skip">Keep original</button>
+          </div>`;
+        document.getElementById(`${bannerId}-accept`).onclick = () => {
+          banner.innerHTML = '';
+          resolve(result.suggested_url);
+        };
+        document.getElementById(`${bannerId}-skip`).onclick = () => {
+          banner.innerHTML = '';
+          resolve(url);
+        };
+      });
+    }
+
+    // Warning only (JS-rendered, unsupported ATS, etc.)
+    if (result.warning) {
+      banner.innerHTML = `
+        <div class="detect-banner warn">
+          ⚠ ${escHtml(result.warning)}
+        </div>`;
+      // Don't block — let them save anyway
+      return url;
+    }
+
+    // All clear
+    banner.innerHTML = '';
+    return url;
+
+  } catch (e) {
+    banner.innerHTML = '';
+    return url; // detection failed silently, proceed
+  }
+}
+
+async function addCompany() {
+  const name = document.getElementById('co-name').value.trim();
+  let url = document.getElementById('co-url').value.trim();
+  if (!name || !url) { alert('Name and URL are required.'); return; }
+
+  url = await runAtsDetection(url, 'add-detect-banner');
+  if (url === null) return; // user cancelled
+
+  try {
+    const company = await api('/api/companies', {
+      method: 'POST',
+      body: JSON.stringify({ name, url }),
+    });
+    state.companies.push(company);
+    document.getElementById('co-name').value = '';
+    document.getElementById('co-url').value = '';
+    document.getElementById('add-detect-banner').innerHTML = '';
+    renderCompanies();
+    updateCompanyFilter();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+function startCompanyEdit(id) {
+  document.getElementById(`co-item-${id}`).classList.add('editing');
+  document.getElementById(`edit-name-${id}`).focus();
+}
+
+function cancelCompanyEdit(id) {
+  const c = state.companies.find(c => c.id === id);
+  document.getElementById(`edit-name-${id}`).value = c.name;
+  document.getElementById(`edit-url-${id}`).value = c.url;
+  document.getElementById(`co-item-${id}`).classList.remove('editing');
+}
+
+async function saveCompanyEdit(id) {
+  const name = document.getElementById(`edit-name-${id}`).value.trim();
+  let url = document.getElementById(`edit-url-${id}`).value.trim();
+  if (!name || !url) { alert('Name and URL are required.'); return; }
+
+  url = await runAtsDetection(url, `detect-banner-${id}`);
+  if (url === null) return; // user cancelled
+
+  try {
+    const updated = await api(`/api/companies/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name, url }),
+    });
+    const idx = state.companies.findIndex(c => c.id === id);
+    if (idx !== -1) state.companies[idx] = updated;
+    renderCompanies();
+    updateCompanyFilter();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function removeCompany(id, name) {
+  if (!confirm(`Remove ${name} and all its tracked jobs?`)) return;
+  await api(`/api/companies/${id}`, { method: 'DELETE' });
+  state.companies = state.companies.filter(c => c.id !== id);
+  state.jobs = state.jobs.filter(j => j.company_id !== id);
+  renderCompanies();
+  renderJobs();
+  updateCompanyFilter();
+  await loadStatus();
+}
+
+// ─────────────────────────────────────────────
+// Keywords
+// ─────────────────────────────────────────────
+
+function renderKeywordsFor(type) {
+  const areaId = type === 'title' ? 'title-kw-area' : 'desc-kw-area';
+  const inputId = type === 'title' ? 'title-kw-input' : 'desc-kw-input';
+  const list = type === 'title' ? state.title_keywords : state.desc_keywords;
+  const area = document.getElementById(areaId);
+  const input = document.getElementById(inputId);
+  area.querySelectorAll('.keyword-tag').forEach(t => t.remove());
+  list.forEach(kw => {
+    const tag = document.createElement('span');
+    tag.className = 'keyword-tag';
+    tag.innerHTML = `${escHtml(kw)} <button onclick="removeKeyword('${escAttr(type)}','${escAttr(kw)}')">×</button>`;
+    area.insertBefore(tag, input);
+  });
+}
+
+function renderKeywords() {
+  renderKeywordsFor('title');
+  renderKeywordsFor('desc');
+}
+
+function handleKeywordInput(e, type) {
+  const list = type === 'title' ? state.title_keywords : state.desc_keywords;
+  const input = e.target;
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = input.value.replace(',', '').trim();
+    if (val && !list.includes(val)) {
+      list.push(val);
+      renderKeywordsFor(type);
+    }
+    input.value = '';
+  } else if (e.key === 'Backspace' && input.value === '' && list.length > 0) {
+    list.pop();
+    renderKeywordsFor(type);
+  }
+}
+
+function removeKeyword(type, kw) {
+  if (type === 'title') state.title_keywords = state.title_keywords.filter(k => k !== kw);
+  else state.desc_keywords = state.desc_keywords.filter(k => k !== kw);
+  renderKeywordsFor(type);
+}
+
+async function saveKeywords() {
+  // Flush any text still in the inputs
+  for (const type of ['title', 'desc']) {
+    const inputId = type === 'title' ? 'title-kw-input' : 'desc-kw-input';
+    const input = document.getElementById(inputId);
+    const val = input.value.trim();
+    const list = type === 'title' ? state.title_keywords : state.desc_keywords;
+    if (val && !list.includes(val)) {
+      list.push(val);
+      input.value = '';
+      renderKeywordsFor(type);
+    }
+  }
+
+  const feedbackEl = document.getElementById('kw-feedback');
+  try {
+    const result = await api('/api/keywords', {
+      method: 'POST',
+      body: JSON.stringify({ title_keywords: state.title_keywords, desc_keywords: state.desc_keywords }),
+    });
+    state.title_keywords = result.title_keywords;
+    state.desc_keywords = result.desc_keywords;
+    renderKeywords();
+    feedbackEl.innerHTML = '<div class="alert alert-success">✓ Keywords saved</div>';
+    setTimeout(() => { feedbackEl.innerHTML = ''; }, 2500);
+  } catch (e) {
+    feedbackEl.innerHTML = `<div class="alert alert-error">${escHtml(e.message)}</div>`;
+  }
+}
+
+// ─────────────────────────────────────────────
+// Check
+// ─────────────────────────────────────────────
+
+async function triggerCheck() {
+  if (state.companies.length === 0) {
+    alert('Add at least one company first.');
+    switchTab('companies');
+    return;
+  }
+  try {
+    await api('/api/check', { method: 'POST' });
+    toggleCheckBanner(true);
+    pollUntilDone();
+  } catch (e) {
+    if (e.message.includes('running')) {
+      alert('A check is already in progress.');
+    } else {
+      alert(e.message);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
+// Tabs
+// ─────────────────────────────────────────────
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${name}`));
+}
+
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+
+function companyUrl(companyId) {
+  const c = state.companies.find(c => c.id === companyId);
+  return c ? c.url : '#';
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+  return String(s || '').replace(/'/g, "\\'");
+}
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+function shortDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+// ─────────────────────────────────────────────
+// Apply modal
+// ─────────────────────────────────────────────
+
+let _applyJob = null;
+
+async function openApplyModal(jobId) {
+  _applyJob = jobId ? (state.jobs.find(j => j.id === jobId) || null) : null;
+
+  document.getElementById('apply-modal-title').textContent = _applyJob ? _applyJob.title : 'Ad-hoc Apply';
+  document.getElementById('apply-modal').classList.add('open');
+
+  // Pre-populate company/title fields
+  document.getElementById('preview-company').value = _applyJob?.company_name || '';
+  document.getElementById('preview-title').value   = _applyJob?.title || '';
+  document.getElementById('preview-jd-text').value  = '';
+  document.getElementById('preview-jd-words').textContent = '';
+  document.getElementById('btn-view-docs').style.display = 'none';
+
+  // Ad-hoc: skip API calls, go straight to preview with empty JD
+  if (!_applyJob) {
+    document.getElementById('preview-doc-health-wrap').style.display = 'none';
+    document.getElementById('btn-generate').textContent = '✨ Generate Documents';
+    showApplyView('preview');
+    return;
+  }
+
+  document.getElementById('preview-doc-health-wrap').style.display = '';
+  showApplyView('fetching');
+
+  try {
+    const [preview, existing] = await Promise.all([
+      api(`/api/jobs/${_applyJob.id}/preview`),
+      api(`/api/jobs/${_applyJob.id}/documents`),
+    ]);
+    if (preview.error) throw new Error(preview.error);
+
+    // Doc health rows
+    const healthEl = document.getElementById('preview-doc-health');
+    healthEl.innerHTML = '';
+    for (const [name, info] of Object.entries(preview.docs || {})) {
+      const words = info.word_count || 0;
+      const color = words > 200 ? 'var(--green)' : words > 50 ? 'var(--yellow, #f5a623)' : 'var(--red)';
+      const label = { instructions: 'Instructions', bio: 'Reference doc', resume: 'Resume' }[name] || name;
+      healthEl.innerHTML += `
+        <div style="display:flex;align-items:center;gap:10px;font-size:12px;background:var(--surface2);padding:7px 10px;border-radius:6px">
+          <span style="color:${color};font-size:14px">●</span>
+          <span style="flex:1;color:var(--text)">${label}</span>
+          <span style="color:var(--muted)">${words} words</span>
+        </div>`;
+    }
+
+    // Job description — pre-populate but user can edit/replace
+    const jd = preview.job_description || '';
+    const words = jd.trim().split(/\s+/).filter(Boolean).length;
+    document.getElementById('preview-jd-words').textContent = jd ? `· ${words} words` : '';
+    document.getElementById('preview-jd-text').value = jd;
+
+    // Show/hide "View Documents" button
+    const viewDocsBtn = document.getElementById('btn-view-docs');
+    if (existing?.exists) {
+      viewDocsBtn.style.display = '';
+      viewDocsBtn.textContent = `View Documents (${existing.date})`;
+      viewDocsBtn.onclick = () => loadExistingDocs(existing);
+      document.getElementById('btn-generate').textContent = '✨ Re-Generate Documents';
+    } else {
+      viewDocsBtn.style.display = 'none';
+      document.getElementById('btn-generate').textContent = '✨ Generate Documents';
+    }
+
+    showApplyView('preview');
+  } catch (e) {
+    document.getElementById('apply-error-msg').textContent = e.message || 'Failed to fetch preview';
+    showApplyView('error');
+  }
+}
+
+function populateContact(contact) {
+  const c = contact || {};
+  document.getElementById('result-contact-phone').textContent   = c.PHONE   || '';
+  document.getElementById('result-contact-address').textContent = c.ADDRESS || '';
+  document.getElementById('result-contact-block').style.display = (c.PHONE || c.ADDRESS) ? 'flex' : 'none';
+}
+
+function loadExistingDocs(existing) {
+  const s = existing.sections || {};
+  document.getElementById('result-cover-letter').textContent = existing.cover_letter || '';
+  document.getElementById('result-intro').textContent        = s.INTRODUCTION || '';
+  document.getElementById('result-rentredi').textContent     = s.RENTREDI_BULLETS || '';
+  document.getElementById('result-metis').textContent        = s.METIS_BULLETS || '';
+  document.getElementById('result-sonos').textContent        = s.SONOS_BULLETS || '';
+  document.getElementById('result-spotify-pm').textContent   = s.SPOTIFY_PM_BULLETS || '';
+  document.getElementById('result-spotify-eng').textContent  = s.SPOTIFY_ENG_BULLETS || '';
+  populateContact(existing.contact);
+  const feedback = existing.feedback || '';
+  document.getElementById('result-feedback').textContent     = feedback;
+  document.getElementById('result-feedback-block').style.display = feedback ? '' : 'none';
+
+  const folderEl = document.getElementById('result-folder');
+  folderEl.textContent = existing.folder;
+  folderEl.href = '#';
+  folderEl.onclick = (e) => { e.preventDefault(); api('/api/open-folder', { method: 'POST', body: JSON.stringify({ path: existing.folder }) }); };
+
+  const jobLink = document.getElementById('result-job-link');
+  if (_applyJob?.url) { jobLink.href = _applyJob.url; jobLink.style.display = ''; }
+  else { jobLink.style.display = 'none'; }
+
+  document.getElementById('result-tokens').textContent = `Generated ${existing.generated_at}`;
+  document.getElementById('btn-mark-applied').checked = !!(_applyJob?.is_applied);
+  showApplyView('result');
+}
+
+function closeApplyModal() {
+  document.getElementById('apply-modal').classList.remove('open');
+  _applyJob = null;
+}
+
+function showApplyView(view) {
+  ['view-fetching', 'view-preview', 'view-generating', 'view-result', 'view-error'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  const el = document.getElementById(`view-${view}`);
+  el.style.display = (view === 'preview' || view === 'result') ? 'flex' : 'block';
+}
+
+async function startGeneration() {
+  showApplyView('generating');
+
+  const jobDescription = document.getElementById('preview-jd-text').value.trim();
+  const company        = document.getElementById('preview-company').value.trim();
+  const title          = document.getElementById('preview-title').value.trim();
+
+  try {
+    const endpoint = _applyJob
+      ? `/api/jobs/${_applyJob.id}/generate`
+      : '/api/generate-adhoc';
+    const body = _applyJob
+      ? { job_description: jobDescription }
+      : { job_description: jobDescription, company, title, url: '' };
+    const result = await api(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+
+    if (result.error) {
+      document.getElementById('apply-error-msg').textContent = result.error;
+      showApplyView('error');
+      return;
+    }
+
+    // Update job in state; for ad-hoc, add the new job returned by the API
+    if (_applyJob) {
+      const job = state.jobs.find(j => j.id === _applyJob.id);
+      if (job) job.is_applied = true;
+    } else if (result.job) {
+      _applyJob = result.job;
+      if (!state.jobs.find(j => j.id === _applyJob.id)) {
+        state.jobs.unshift(_applyJob);
+      }
+    }
+    renderJobs();
+
+    // Show results
+    const s = result.sections || {};
+    document.getElementById('result-cover-letter').textContent = result.cover_letter || '';
+    document.getElementById('result-intro').textContent        = s.INTRODUCTION || '';
+    document.getElementById('result-rentredi').textContent     = s.RENTREDI_BULLETS || '';
+    document.getElementById('result-metis').textContent        = s.METIS_BULLETS || '';
+    document.getElementById('result-sonos').textContent        = s.SONOS_BULLETS || '';
+    document.getElementById('result-spotify-pm').textContent   = s.SPOTIFY_PM_BULLETS || '';
+    document.getElementById('result-spotify-eng').textContent  = s.SPOTIFY_ENG_BULLETS || '';
+    populateContact(result.contact);
+    const feedback = result.feedback || '';
+    document.getElementById('result-feedback').textContent     = feedback;
+    document.getElementById('result-feedback-block').style.display = feedback ? '' : 'none';
+
+    if (result.files?.folder) {
+      const folderEl = document.getElementById('result-folder');
+      folderEl.textContent = result.files.folder;
+      folderEl.href = '#';
+      folderEl.onclick = (e) => { e.preventDefault(); api('/api/open-folder', { method: 'POST', body: JSON.stringify({ path: result.files.folder }) }); };
+    }
+    const jobLink = document.getElementById('result-job-link');
+    if (_applyJob?.url) { jobLink.href = _applyJob.url; jobLink.style.display = ''; }
+    else { jobLink.style.display = 'none'; }
+
+    const tokens = result.usage ? `${result.usage.input_tokens + result.usage.output_tokens} tokens used` : '';
+    document.getElementById('result-tokens').textContent = tokens;
+    document.getElementById('btn-mark-applied').checked = !!(_applyJob?.is_applied);
+    showApplyView('result');
+
+  } catch (e) {
+    document.getElementById('apply-error-msg').textContent = e.message || 'Unknown error';
+    showApplyView('error');
+  }
+}
+
+async function markApplied() {
+  if (!_applyJob) return;
+  const cb = document.getElementById('btn-mark-applied');
+  await api(`/api/jobs/${_applyJob.id}/apply`, { method: 'POST' });
+  const job = state.jobs.find(j => j.id === _applyJob.id);
+  if (job) job.is_applied = true;
+  cb.checked = true;
+  renderJobs();
+}
+
+function copyResultText(elId) {
+  const text = document.getElementById(elId).textContent;
+  navigator.clipboard.writeText(text);
+}
+
+// ─────────────────────────────────────────────
+// Job Search (Adzuna)
+// ─────────────────────────────────────────────
+
+let _searchPage = 1;
+let _searchTotal = 0;
+
+async function runSearch(page = 1) {
+  _searchPage = page;
+  const q = document.getElementById('search-query').value.trim();
+  const days = document.getElementById('search-days').value;
+  if (!q) return;
+
+  document.getElementById('search-status').textContent = 'Searching…';
+  document.getElementById('search-results').innerHTML = '';
+  document.getElementById('search-pagination').innerHTML = '';
+
+  try {
+    const data = await api(`/api/search?q=${encodeURIComponent(q)}&page=${page}&days=${days}`);
+    if (data.error) {
+      document.getElementById('search-status').textContent = '⚠ ' + data.error;
+      return;
+    }
+    _searchTotal = data.total || 0;
+    renderSearchResults(data.results || []);
+    renderSearchPagination(q, page, data.total);
+    document.getElementById('search-status').textContent =
+      `${_searchTotal.toLocaleString()} results — page ${page}`;
+  } catch (e) {
+    document.getElementById('search-status').textContent = '⚠ ' + (e.message || 'Search failed');
+  }
+}
+
+function renderSearchResults(results) {
+  const el = document.getElementById('search-results');
+  if (!results.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0">No results found.</div>';
+    return;
+  }
+  el.innerHTML = results.map(r => `
+    <div class="job-card" style="display:block">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div style="min-width:0">
+          <a href="${escHtml(r.url)}" target="_blank" class="job-title">${escHtml(r.title)}</a>
+          <div class="job-meta" style="margin-top:3px">
+            <span style="font-weight:500;color:var(--text)">${escHtml(r.company)}</span>
+            ${r.location ? `<span>· ${escHtml(r.location)}</span>` : ''}
+            ${r.posted ? `<span>· ${r.posted}</span>` : ''}
+          </div>
+        </div>
+        <div style="flex-shrink:0">
+          ${r.already_tracked
+            ? '<span style="font-size:11px;color:var(--muted)">Already tracked</span>'
+            : `<button class="btn btn-primary btn-sm" onclick="addSearchJob(this, ${escHtml(JSON.stringify(r))})">+ Add</button>`}
+        </div>
+      </div>
+      ${r.description ? `<div style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6;border-top:1px solid var(--border);padding-top:8px">${escHtml(r.description)}…</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderSearchPagination(q, page, total) {
+  const perPage = 20;
+  const totalPages = Math.ceil(Math.min(total, 1000) / perPage);
+  if (totalPages <= 1) return;
+  const el = document.getElementById('search-pagination');
+  el.innerHTML = `
+    ${page > 1 ? `<button class="btn btn-ghost btn-sm" onclick="runSearch(${page - 1})">← Prev</button>` : ''}
+    <span style="font-size:12px;color:var(--muted)">Page ${page} of ${totalPages}</span>
+    ${page < totalPages ? `<button class="btn btn-ghost btn-sm" onclick="runSearch(${page + 1})">Next →</button>` : ''}
+  `;
+}
+
+async function addSearchJob(btn, result) {
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    await api('/api/jobs/add-from-search', {
+      method: 'POST',
+      body: JSON.stringify(result),
+    });
+    btn.textContent = '✓ Added';
+    btn.className = 'btn btn-ghost btn-sm';
+    // Refresh jobs list in background
+    state.jobs = await api('/api/jobs');
+    renderJobs();
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = '+ Add';
+    alert(e.message || 'Failed to add job');
+  }
+}
+
+// ─────────────────────────────────────────────
+// Settings
+// ─────────────────────────────────────────────
+
+async function loadSettings() {
+  state.settings = await api('/api/settings').catch(() => ({}));
+  renderSettings();
+}
+
+function renderSettings() {
+  const s = state.settings;
+
+  // Model radio
+  const model = s.model || 'sonnet';
+  document.querySelectorAll('input[name="model"]').forEach(r => {
+    r.checked = r.value === model;
+  });
+
+  // Google Doc URLs
+  const gdocUrls = s.gdoc_urls || {};
+  document.querySelectorAll('.gdoc-input').forEach(el => {
+    const docName = el.dataset.doc;
+    el.value = gdocUrls[docName] || '';
+  });
+
+}
+
+async function saveModelSetting() {
+  const selected = document.querySelector('input[name="model"]:checked')?.value || 'sonnet';
+  state.settings.model = selected;
+  await api('/api/settings', { method: 'POST', body: JSON.stringify({ model: selected }) });
+}
+
+async function saveGdocSettings() {
+  const urls = {};
+  document.querySelectorAll('.gdoc-input').forEach(el => {
+    const val = el.value.trim();
+    if (val) urls[el.dataset.doc] = val;
+  });
+  state.settings.gdoc_urls = urls;
+  await api('/api/settings', { method: 'POST', body: JSON.stringify({ gdoc_urls: urls }) });
+  const fb = document.getElementById('settings-feedback');
+  fb.textContent = '✓ Saved';
+  setTimeout(() => { fb.textContent = ''; }, 2000);
+}
+
+
+
+// ─────────────────────────────────────────────
+// Start
+// ─────────────────────────────────────────────
+init();
+</script>
+
+<!-- Apply modal -->
+<div class="modal-overlay" id="apply-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Apply — <span id="apply-modal-title" style="font-weight:400"></span></h2>
+      <button class="btn btn-ghost btn-sm" onclick="closeApplyModal()">✕</button>
+    </div>
+
+    <!-- View: Fetching preview -->
+    <div id="view-fetching">
+      <div class="modal-body" style="align-items:center;justify-content:center;min-height:160px;text-align:center;gap:12px">
+        <div class="spinner" style="width:24px;height:24px;border-width:3px"></div>
+        <div style="font-size:13px;color:var(--muted)">Fetching job description…</div>
+      </div>
+    </div>
+
+    <!-- View: Preview -->
+    <div id="view-preview" style="display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0">
+      <div class="modal-body" style="gap:14px">
+        <!-- Company + Title -->
+        <div style="display:flex;gap:10px">
+          <div style="flex:1">
+            <div class="modal-label">Company</div>
+            <input id="preview-company" type="text" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--text);box-sizing:border-box" placeholder="Company name">
+          </div>
+          <div style="flex:2">
+            <div class="modal-label">Job title</div>
+            <input id="preview-title" type="text" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--text);box-sizing:border-box" placeholder="Job title">
+          </div>
+        </div>
+        <!-- Doc health -->
+        <div id="preview-doc-health-wrap">
+          <div class="modal-label">Input docs</div>
+          <div id="preview-doc-health" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <!-- Job description -->
+        <div>
+          <div class="modal-label">Job description <span id="preview-jd-words" style="font-weight:400;color:var(--muted)"></span></div>
+          <textarea id="preview-jd-text" style="min-height:240px;font-size:12px;font-family:var(--font)" placeholder="Paste the job description here…"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost btn-sm" onclick="closeApplyModal()">Cancel</button>
+        <button id="btn-view-docs" class="btn btn-ghost btn-sm" style="display:none">View Documents</button>
+        <button id="btn-generate" class="btn btn-primary" onclick="startGeneration()">✨ Generate documents</button>
+      </div>
+    </div>
+
+    <!-- View: Generating -->
+    <div id="view-generating" style="display:none">
+      <div class="modal-body" style="align-items:center;justify-content:center;min-height:180px;text-align:center;gap:12px">
+        <div class="spinner" style="width:28px;height:28px;border-width:3px"></div>
+        <div style="font-size:15px;font-weight:600">Generating your application…</div>
+        <div style="color:var(--muted);font-size:13px">
+          Fetching job description · Reading your career docs · Writing with Claude
+        </div>
+      </div>
+    </div>
+
+    <!-- View: Result -->
+    <div id="view-result" style="display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0">
+      <div class="modal-body" style="gap:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="color:var(--green);font-weight:600">✓ Documents generated</div>
+          <span style="font-size:11px;color:var(--muted)" id="result-tokens"></span>
+        </div>
+        <div style="display:flex;gap:16px;font-size:12px;flex-wrap:wrap">
+          <span style="color:var(--muted)">Saved to: <a id="result-folder" href="#" style="color:var(--accent)"></a></span>
+          <a id="result-job-link" href="#" target="_blank" rel="noopener" style="color:var(--accent)">View posting ↗</a>
+        </div>
+
+        <div id="result-feedback-block" style="display:none;background:var(--surface2);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--muted);white-space:pre-wrap;line-height:1.6">
+          <div class="modal-label" style="margin-bottom:6px">Feedback</div>
+          <div id="result-feedback"></div>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="modal-label" style="margin:0">Cover Letter</div>
+            <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="copyResultText('result-cover-letter')">Copy</button>
+          </div>
+          <textarea id="result-cover-letter" style="min-height:140px;font-size:12px"></textarea>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="modal-label" style="margin:0">Introduction</div>
+            <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="copyResultText('result-intro')">Copy</button>
+          </div>
+          <textarea id="result-intro" style="min-height:80px;font-size:12px"></textarea>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="modal-label" style="margin:0">RentRedi Bullets</div>
+            <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="copyResultText('result-rentredi')">Copy</button>
+          </div>
+          <textarea id="result-rentredi" style="min-height:80px;font-size:12px"></textarea>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="modal-label" style="margin:0">Metis Bullets</div>
+            <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="copyResultText('result-metis')">Copy</button>
+          </div>
+          <textarea id="result-metis" style="min-height:60px;font-size:12px"></textarea>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="modal-label" style="margin:0">Sonos Bullets</div>
+            <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="copyResultText('result-sonos')">Copy</button>
+          </div>
+          <textarea id="result-sonos" style="min-height:80px;font-size:12px"></textarea>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="modal-label" style="margin:0">Spotify PM Bullets</div>
+            <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="copyResultText('result-spotify-pm')">Copy</button>
+          </div>
+          <textarea id="result-spotify-pm" style="min-height:80px;font-size:12px"></textarea>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="modal-label" style="margin:0">Spotify Eng Bullets</div>
+            <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="copyResultText('result-spotify-eng')">Copy</button>
+          </div>
+          <textarea id="result-spotify-eng" style="min-height:80px;font-size:12px"></textarea>
+        </div>
+
+        <div id="result-contact-block" style="display:none;border-top:1px solid var(--border);padding-top:14px;display:flex;flex-direction:column;gap:12px">
+          <div class="modal-label" style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:.05em">Contact Info</div>
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div class="modal-label" style="margin:0">Phone</div>
+              <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="copyResultText('result-contact-phone')">Copy</button>
+            </div>
+            <textarea id="result-contact-phone" style="min-height:40px;font-size:12px"></textarea>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div class="modal-label" style="margin:0">Address</div>
+              <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="copyResultText('result-contact-address')">Copy</button>
+            </div>
+            <textarea id="result-contact-address" style="min-height:40px;font-size:12px"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span class="copy-hint">Click the folder link above to open in Finder.</span>
+        <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;user-select:none">
+          <input type="checkbox" id="btn-mark-applied" onchange="markApplied()" style="width:15px;height:15px;cursor:pointer">
+          Applied
+        </label>
+      </div>
+    </div>
+
+    <!-- View: Error -->
+    <div id="view-error" style="display:none">
+      <div class="modal-body" style="gap:12px">
+        <div style="color:var(--red);font-weight:600">⚠ Generation failed</div>
+        <div id="apply-error-msg" style="color:var(--muted);font-size:13px;line-height:1.6;background:var(--surface2);padding:12px;border-radius:8px;font-family:monospace"></div>
+        <div style="font-size:12px;color:var(--muted)">
+          Make sure <code>ANTHROPIC_API_KEY</code> is set in your <code>.env</code> file and your <code>career_docs/</code> folder has content.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost btn-sm" onclick="closeApplyModal()">Close</button>
+        <button class="btn btn-primary" onclick="startGeneration()">Try again</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,8 @@
+flask
+flask-cors
+requests
+beautifulsoup4
+apscheduler
+anthropic
+python-dotenv
+python-docx
