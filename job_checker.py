@@ -50,7 +50,8 @@ except ImportError:
 # ─────────────────────────────────────────────
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, 'job_data.json')
+# Overridable so dev/test runs never touch the real tracked-job list — see --dev / --data-file.
+DATA_FILE = os.environ.get('JOB_DATA_FILE') or os.path.join(BASE_DIR, 'job_data.json')
 
 HEADERS = {
     'User-Agent': (
@@ -1761,7 +1762,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Job Checker')
     parser.add_argument('--check', action='store_true', help='Run check and exit (for cron/scheduled tasks)')
     parser.add_argument('--port', type=int, default=5000, help='Port for web server (default 5000)')
+    parser.add_argument('--data-file', help='Path to the JSON data file (default: job_data.json next to this script)')
+    parser.add_argument('--dev', action='store_true',
+                         help='Shorthand for --data-file job_data.dev.json — keeps dev/test runs off your real tracked list')
     args = parser.parse_args()
+
+    if args.data_file:
+        DATA_FILE = args.data_file
+    elif args.dev:
+        DATA_FILE = os.path.join(BASE_DIR, 'job_data.dev.json')
+
+    print(f"Using data file: {DATA_FILE}")
 
     if args.check:
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M')}] Running scheduled job check...")

@@ -12,14 +12,36 @@ letters and resumes from the user's own reference docs. Single-user, runs locall
 
 ```bash
 source venv/bin/activate            # venv already set up in repo
-python job_checker.py               # start web app at http://localhost:5000
+python job_checker.py               # start web app at http://localhost:5000 — REAL tracked data
 python job_checker.py --check       # run one scrape pass and exit (for cron/launchd)
 python job_checker.py --port 8080   # custom port
 ```
 
+**For any development/testing work, always use the dev data file, never the real one:**
+
+```bash
+python job_checker.py --dev --port 5099   # uses job_data.dev.json instead of job_data.json
+```
+
+`--dev` is shorthand for `--data-file job_data.dev.json` (there's also a bare `--data-file PATH`
+flag, and a `JOB_DATA_FILE` env var, for other overrides). `job_data.dev.json` is a gitignored,
+one-time seeded copy of the real file — it diverges over time as dev/test sweeps run against it,
+and that's fine; it's not meant to stay in sync. **Never point a test run at `job_data.json`
+itself** — this file is the user's real, live job search, and a test run that hits the real
+Adzuna API can add/mutate real tracked jobs. This came from a real incident (2026-07-15): a
+background sweep thread outlived a `kill` during testing and raced with a manual restore
+attempt — no data was lost, but it was a close call. Use `--dev` + a distinct `--port` for any
+verification, including quick one-off checks.
+
 There is no test suite, linter, or build step — this is a single-file Flask backend plus a
-single-file static frontend. Verify changes by running the server and exercising the UI/API
-directly (`curl localhost:5000/api/...` or the browser).
+single-file static frontend. Verify changes by running a `--dev` server and exercising the
+API directly (`curl localhost:5099/api/...`); the user does hands-on browser verification
+against the real instance themselves, not Claude (see project memory).
+
+The project is a git repo (initialized 2026-07-15). `.gitignore` excludes `.env`,
+`job_data.json`, `job_data.dev.json`, `venv/`, `applications/`, and `.claude/` — none of these
+should ever be committed (`.env` has API keys; the job_data files are the user's personal,
+frequently-changing runtime data, not code).
 
 Config lives in `.env` (loaded via `python-dotenv`): `ANTHROPIC_API_KEY`, `OUTPUT_FOLDER`
 (where generated application docs are written — normally a locally-synced Drive folder),
