@@ -4,5 +4,13 @@ __pycache__/
 .env
 job_data.json
 job_data.dev.json
+job_data.json.bak-*
+metrics.db
+metrics.dev.db
+*.metrics.db
 applications/
 .claude/
+.get_new_jobs.lock
+logs/
+credentials.json
+token.json

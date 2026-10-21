@@ -5,4 +5,9 @@ beautifulsoup4
 apscheduler
 anthropic
 python-dotenv
-python-docx
+google-api-python-client
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-genai
+openai
