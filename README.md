@@ -1,22 +1,31 @@
 # Goat Search
 
-A personal job-search agent: it scrapes job postings from multiple sources, filters and
-classifies them against a candidate's real background using LLMs, drafts tailored application
-materials (cover letter, resume bullets, Google Doc output), preps interview questions, and
-tracks the whole pipeline — screened → applied → interviewed — in a local dashboard with
+> **Work in progress.** This is an active personal project, not a finished product — it's
+> rebuilt and extended continuously as real gaps turn up while actually using it for a real job
+> search. Expect the feature set and even the architecture to keep changing.
+
+A personal job-search agent: it scrapes job postings from multiple sources, classifies them
+against a candidate's real background using LLMs, and for anything worth applying to, suggests
+an application strategy and drafts tailored materials — a cover letter and resume bullets — for
+the candidate to review, edit, and submit themselves. It also drafts interview prep questions
+and tracks the whole pipeline — screened → applied → interviewed — in a local dashboard with
 historical cost/token metrics.
 
-Single-user, runs entirely locally. Built iteratively over several months as a real tool used
-for a real job search, not a demo — every feature below was built in response to an actual gap
-found while using it.
+**The agent never submits anything on the candidate's behalf.** Every output — the fit
+assessment, the strategy notes, the cover letter, the resume bullets, the interview questions —
+is a draft or a recommendation. A human reads it, decides what to do with it, and is the one who
+actually applies. "Applied" and "Interviewing" are states the candidate marks themselves, not
+actions the system takes.
+
+Single-user, runs entirely locally.
 
 ## Why this exists
 
 Generic job boards surface volume, not fit. This project inverts that: it pulls candidates from
 six different sources, runs every single one through the same classification and fit-rating
-funnel against the user's actual career background, and only then presents a short, ranked list
-of real candidates — with the reasoning for every inclusion and exclusion kept visible and
-reversible.
+funnel against the candidate's actual career background, and only then presents a short, ranked
+list of real candidates — with the reasoning for every inclusion and exclusion kept visible and
+reversible, and a human making every decision about what happens next.
 
 ## Architecture
 
@@ -84,33 +93,42 @@ forever.
 
 ```mermaid
 flowchart TD
-    A["User clicks Generate"] --> B["Resolve job description<br/>cached file to stored text to fresh fetch"]
+    A["Candidate clicks Generate"] --> B["Resolve job description<br/>cached file to stored text to fresh fetch"]
     B --> C["Load career docs<br/>Bio, Instructions, Career Summary"]
-    C --> D["generate_application_docs()<br/>Claude / Gemini / OpenAI, user's choice"]
-    D --> E["audit_cover_letter()<br/>independent model checks against<br/>a hard style rulebook"]
-    E --> F["Parse XML-tagged sections:<br/>cover letter, per-role resume bullets, contact info"]
+    C --> D["generate_application_docs()<br/>Claude / Gemini / OpenAI, candidate's choice"]
+    D --> E["audit_cover_letter()<br/>independent model checks the draft against<br/>a hard style rulebook"]
+    E --> F["Parse into draft sections:<br/>cover letter, per-role resume bullets,<br/>strategy notes, contact info"]
     F --> G["Write local .txt + sections.json"]
-    F --> H["Upload to Drive + fill Google Doc template"]
+    F --> H["Upload draft to Drive + fill Google Doc template"]
     F --> I["Log token usage and cost by model"]
     F --> J["Mine feedback for recurring resume gaps"]
+    G --> K["Candidate reviews, edits, and submits<br/>the application themselves"]
+    H --> K
 ```
 
-The generation call and the audit call are deliberately independent models by default (e.g.
+Everything produced here is a draft plus a recommendation, not a finished, submitted
+application. The "strategy notes" are the model's read on how to position for this specific
+role — which stories to lead with, what's a genuine gap versus bridgeable, what's missing from
+the candidate's own background doc — meant to inform the candidate's own judgment, not replace
+it. The generation call and the audit call are deliberately independent models by default (e.g.
 Sonnet writes, Opus audits) — the same model grading its own work tends to miss the same
-mistakes it makes.
+mistakes it makes. Nothing in this pipeline ever submits anything to an employer; that step is
+entirely manual, outside this app.
 
 ## Feature areas
 
 - **Jobs** — Found / Screened / Excluded, with live keyword re-scoring, LinkedIn-connection
   matching, and a persistent, filterable record of every automatic rejection and why.
-- **Applications** — every generated application, sourced from disk so it survives the 30-day
-  working-set retention window on the job list itself. Supports per-generation model choice,
-  additional free-text instructions, and a structured cover-letter audit against a fixed style
-  rulebook (no em dashes, no fabricated numbers, no buzzwords, one idea per sentence, etc.).
-- **Interviews** — once an application moves to interviewing, drafts round-specific prep
-  questions (recruiter screen vs. an adaptive prompt for later rounds, grounded in named
+- **Applications** — a draft cover letter, resume bullets, and strategy notes per role, sourced
+  from disk so it survives the 30-day working-set retention window on the job list itself.
+  Supports per-generation model choice, additional free-text instructions, and a structured
+  cover-letter audit against a fixed style rulebook (no em dashes, no fabricated numbers, no
+  buzzwords, one idea per sentence, etc.) — all still drafts for the candidate to review and
+  submit themselves, never auto-submitted.
+- **Interviews** — once the candidate marks an application as interviewing, drafts round-specific
+  prep questions (recruiter screen vs. an adaptive prompt for later rounds, grounded in named
   specifics from the candidate's real background) with support for multiple rounds per
-  application.
+  application — study material, not a transcript of what will actually be asked.
 - **Practice** — rehearse either generic recruiter questions or any already-generated
   job-specific question. Supports dictation via the browser's native speech API; submitting an
   answer returns structured feedback (strengths / improvements / delivery / overall), checked
