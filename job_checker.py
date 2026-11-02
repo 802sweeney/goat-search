@@ -2003,6 +2003,19 @@ def api_dismiss_job(job_id):
     save_data(data)
     return jsonify({'ok': True})
 
+@app.route('/api/jobs/<job_id>/undismiss', methods=['POST'])
+def api_undismiss_job(job_id):
+    """Reverse a dismiss (2026-11-02) — backs the "Undo" toast shown for a few seconds right
+    after clicking the checkmark, so a misclick doesn't need the user to go find the job again
+    some other way."""
+    data = load_data()
+    for job in data['jobs']:
+        if job['id'] == job_id:
+            job['is_new'] = True
+            break
+    save_data(data)
+    return jsonify({'ok': True})
+
 @app.route('/api/jobs/dismiss-all', methods=['POST'])
 def api_dismiss_all():
     """Mark all new jobs as seen."""
