@@ -2643,7 +2643,7 @@ function renderInterviewRounds(interviews) {
           <div class="card" style="margin-bottom:0">
             <div style="font-weight:600;margin-bottom:8px">Q${qi + 1}. ${escHtml(qa.question)}</div>
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-              <div style="font-size:13px;color:var(--muted);line-height:1.6;flex:1" id="interview-outline-${ri}-${qi}">${escHtml(qa.outline)}</div>
+              <div style="font-size:13px;color:var(--muted);line-height:1.6;white-space:pre-wrap;flex:1" id="interview-outline-${ri}-${qi}">${escHtml(qa.outline)}</div>
               <button class="btn btn-ghost btn-sm" style="font-size:11px;flex-shrink:0" onclick="copyResultText('interview-outline-${ri}-${qi}')">Copy</button>
             </div>
           </div>
