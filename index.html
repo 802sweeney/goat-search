@@ -3001,7 +3001,17 @@ function renderJobs() {
   if (companyFilter)  jobs = jobs.filter(j => j.company_id === companyFilter);
   if (newOnly)        jobs = jobs.filter(j => j.is_new);
   jobs = jobs.filter(j => j.is_remote || j.source === 'adzuna');
-  jobs = jobs.filter(j => (j.match_score ?? 0) > 0);
+  // Real gap, found 2026-11-05: a Chrome-extension capture is a deliberate, one-off "I found
+  // this specific job myself, track it" action — the backend already skips title_keywords
+  // gating for it entirely (capture_job() has no keyword check at all, same reasoning as every
+  // other manual-add route). But this match_score filter, meant to hide irrelevant results from
+  // the big automated/bulk sources, doesn't know the difference — so a captured job whose title
+  // doesn't happen to contain a configured keyword (e.g. "Product Owner" vs. a "product manager"
+  // keyword) was fully classified and rated, not excluded, and still invisible on every Jobs
+  // sub-tab with no indication anything was wrong. Confirmed for real against a captured Bitovi
+  // posting. Exempting source === 'extension' here matches the backend's own already-established
+  // scope for what counts as a deliberate manual action, not a new policy.
+  jobs = jobs.filter(j => (j.match_score ?? 0) > 0 || j.source === 'extension');
 
   const newCount = state.jobs.filter(j => j.is_new).length;
   dismissBtn.style.display = newCount > 0 ? 'inline-flex' : 'none';
