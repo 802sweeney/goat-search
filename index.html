@@ -2634,16 +2634,15 @@ function renderInterviewRounds(interviews) {
         <button class="btn btn-ghost btn-sm" onclick="event.preventDefault();event.stopPropagation();regenerateInterviewRound(this,'${round.id}')">↻ Regenerate</button>
       </summary>
       <div class="interview-round-body">
-        ${meta || round.additional_info ? `
-          <div style="font-size:12px;color:var(--muted)">
-            ${meta ? escHtml(meta) : ''}${meta && round.additional_info ? ' · ' : ''}${round.additional_info ? escHtml(round.additional_info) : ''}
-          </div>
+        ${meta ? `<div style="font-size:12px;color:var(--muted)">${escHtml(meta)}</div>` : ''}
+        ${round.additional_info ? `
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;white-space:pre-wrap;background:var(--surface2);border-radius:8px;padding:12px">${renderMarkdownLite(round.additional_info)}</div>
         ` : ''}
         ${(round.questions || []).map((qa, qi) => `
           <div class="card" style="margin-bottom:0">
             <div style="font-weight:600;margin-bottom:8px">Q${qi + 1}. ${escHtml(qa.question)}</div>
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-              <div style="font-size:13px;color:var(--muted);line-height:1.6;white-space:pre-wrap;flex:1" id="interview-outline-${ri}-${qi}">${escHtml(qa.outline)}</div>
+              <div style="font-size:13px;color:var(--muted);line-height:1.6;white-space:pre-wrap;flex:1" id="interview-outline-${ri}-${qi}">${formatOutlineHtml(qa.outline)}</div>
               <button class="btn btn-ghost btn-sm" style="font-size:11px;flex-shrink:0" onclick="copyResultText('interview-outline-${ri}-${qi}')">Copy</button>
             </div>
           </div>
@@ -3686,6 +3685,39 @@ function escHtml(s) {
 }
 function escAttr(s) {
   return String(s || '').replace(/'/g, "\\'");
+}
+
+// Bolds short "Label:" prefixes at the start of a line (2026-11-03) — interview-prep outlines
+// are consistently written in STAR format (Situation/Task/Action/Result), plus the model's
+// occasional ad hoc variants (e.g. "Note:", "Framing for Evan:"), and reading them as one
+// unbroken paragraph made the structure hard to see. Not a fixed STAR-only list, since real
+// output varies in which labels it uses — anchored to line-start with a short max length (40
+// chars) instead, so a colon that's just part of a normal sentence (e.g. "the 10:30 meeting")
+// never gets bolded. Escapes first, then only wraps the already-escaped (therefore safe) label
+// text in literal <strong> tags this function controls, never user-controlled HTML.
+function formatOutlineHtml(text) {
+  const escaped = escHtml(text);
+  return escaped.replace(/(^|\n)([A-Za-z][A-Za-z0-9 /&-]{1,40}:)(\s)/g, '$1<strong>$2</strong>$3');
+}
+
+// Lightweight markdown-to-HTML for free-text fields that genuinely contain real markdown
+// (2026-11-05) — unlike interview-prep outlines (plain STAR-labeled text, see formatOutlineHtml
+// above), an interview round's "additional context" field is often the user's own pasted notes
+// from a recruiter call, which really does carry real ##/**/- markdown syntax, confirmed by
+// checking every interview_prep.json on disk. Deliberately not a full markdown parser (no
+// links, blockquotes, code fences, or tables — none appear anywhere in the real data, so none
+// are handled): just the four constructs that actually show up. Escapes first, then only
+// introduces literal tags this function controls, same safe pattern as formatOutlineHtml.
+// Order matters: headings before inline bold (so a heading's own text can still pick up bold),
+// then **bold** before *italic* (so a bold pair's own asterisks are consumed first and never
+// misread as two separate italic markers).
+function renderMarkdownLite(text) {
+  let html = escHtml(text);
+  html = html.replace(/^#{1,3}\s+(.*)$/gm, '<strong style="font-size:14px">$1</strong>');
+  html = html.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  html = html.replace(/^-\s+/gm, '• ');
+  return html;
 }
 function timeAgo(iso) {
   const diff = Date.now() - new Date(iso).getTime();

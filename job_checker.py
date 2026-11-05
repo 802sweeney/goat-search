@@ -4807,7 +4807,22 @@ def list_interviews() -> list:
         matched_job = jobs_by_safe_name.get(key)
         # Most recently generated/regenerated round, across every round in this application —
         # not just the first one — so the list sorts by actual recent activity.
-        latest_generated_at = max((r.get('generated_at', '') for r in interviews), default='')
+        #
+        # Real bug, found 2026-11-05: this used to be a plain max() over the raw formatted
+        # strings (e.g. 'November 02, 2026 12:08 PM'), which compares lexically, not
+        # chronologically — 'October' sorts after 'November' (O > N), so a later October round
+        # could beat an earlier November one. Confirmed for real against Deepgram's two rounds
+        # (Oct 21 and Nov 2) — the Oct 21 string was being picked as "latest" even though Nov 2
+        # is the real most recent one. Fixed by parsing each round's real datetime
+        # (_parse_application_generated_at(), the same shared parser api_get_job_funnel() uses)
+        # and maxing on that instead; an unparseable/blank date sorts as the oldest possible
+        # value rather than crashing or silently winning a lexical comparison it shouldn't.
+        latest_round = max(
+            interviews,
+            key=lambda r: _parse_application_generated_at(r.get('generated_at', '')) or datetime.min.replace(tzinfo=timezone.utc),
+            default={},
+        )
+        latest_generated_at = latest_round.get('generated_at', '')
         results.append({
             'id':                        _application_id(*key),
             'company_name':              matched_job.get('company_name') if matched_job else entry['company_dir'],
@@ -4828,7 +4843,13 @@ def list_interviews() -> list:
             'fit_rating':                matched_job.get('fit_rating') if matched_job else None,
         })
 
-    return sorted(results, key=lambda r: r['interview_prep_generated_at'], reverse=True)
+    # Same lexical-vs-chronological bug as above, one level up: sorts the whole list by real
+    # parsed datetime now instead of the raw formatted string.
+    return sorted(
+        results,
+        key=lambda r: _parse_application_generated_at(r['interview_prep_generated_at']) or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
 
 
 @app.route('/api/interviews', methods=['GET'])
