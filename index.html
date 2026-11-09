@@ -840,6 +840,7 @@
             <option value="gpt-astra">GPT-6 Astra — ~$10/$50 per MTok</option>
           </optgroup>
         </select>
+        <a id="preview-job-link" href="#" target="_blank" rel="noopener" class="btn btn-ghost" style="display:none">View posting ↗</a>
         <button id="btn-generate" class="btn btn-primary" onclick="generateInNewWindow()" title="Opens in a new tab so you can keep browsing while it generates">✨ Generate documents</button>
       </div>
     </div>
@@ -3807,6 +3808,20 @@ async function loadJobDetail(jobId) {
   // Pre-populate company/title fields
   document.getElementById('preview-company').value = _applyJob?.company_name || '';
   document.getElementById('preview-title').value   = _applyJob?.title || '';
+
+  // "View posting" next to Generate (2026-11-09, user-specified) — lets the user confirm the
+  // real posting is still live BEFORE spending a generation call on it, specifically because a
+  // posting can disappear between when it was tracked and when documents actually get used,
+  // which was only being discovered after the fact. An ad-hoc job (_applyJob null) has no URL
+  // at all, so the link stays hidden rather than pointing nowhere.
+  const jobLinkEl = document.getElementById('preview-job-link');
+  if (_applyJob?.url) {
+    jobLinkEl.href = _applyJob.url;
+    jobLinkEl.style.display = '';
+  } else {
+    jobLinkEl.style.display = 'none';
+  }
+
   document.getElementById('preview-jd-text').value  = '';
   document.getElementById('preview-jd-words').textContent = '';
   document.getElementById('preview-additional-instructions').value = '';
